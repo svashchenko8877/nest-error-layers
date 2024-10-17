@@ -1,3 +1,4 @@
+
 import {
   ExceptionFilter,
   Catch,
@@ -6,10 +7,13 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { ErrorService } from './error.service';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
+
+  constructor(private readonly errorService: ErrorService) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -23,13 +27,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const message =
       exception instanceof HttpException
-        ? exception.getResponse()
+        ? (exception.getResponse() as any).message || exception.message
         : 'Внутрішня помилка сервера';
 
-    this.logger.error(
-      `Статус ${status} Помилка: ${JSON.stringify(message)}`,
-      (exception as Error).stack,
-    );
+    this.errorService.logError(message, (exception as Error).stack);
 
     response.status(status).json({
       statusCode: status,
